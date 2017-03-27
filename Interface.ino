@@ -9,10 +9,15 @@
 // Include the library for I2C communication with other devices (LCD, Mega, etc.)
 #include <Wire.h>
 
-//defining the green backlight color
+//defining available backlight colors
+#define OFF 0x0
+#define RED 0x1
+#define YELLOW 0x3
+#define GREEN 0x2
+#define TEAL 0x6
 #define BLUE 0x4
-#define RED 0x5
-#define GREEN 0x3
+#define VIOLET 0x5
+#define WHITE 0x7 
 
 ////////// Initialize the keypad code //////////////////
 
