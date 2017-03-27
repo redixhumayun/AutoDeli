@@ -141,7 +141,7 @@ void loop() {
   lcd.print("Please retrieve");
   lcd.setCursor(0, 1); // Set cursor to the bottom left corner of LCD.
   lcd.print("your purchase."); // Print a field to 2nd line.
-  Serial.println("Random");
+  ///Jack deleted serial.print
 }
 
 //function passing the selected meat to the master reader (MEGA)
