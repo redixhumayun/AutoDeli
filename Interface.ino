@@ -65,6 +65,7 @@ void setup() {
   // on each line (including spaces).
   lcd.setBacklight(BLUE); // Turn on the backlight of the display,
   // otherwise it's really hard to read the text.
+  lcd.autoscroll();
   lcd.print(" -- AutoDeli -- "); // Prints message to the LCD. Note: Upon booting,
   // the display will default to the top left corner.
   // If you want to print somewhere else, you have to
@@ -100,7 +101,7 @@ void loop() {
     lcd.clear();
     lcd.setBacklight(RED);
     lcd.setCursor(0, 0);
-    lcd.print("Sorry, invalid selection");
+    lcd.print("Invalid selection");
     lcd.setCursor(0, 1);
     lcd.print("Please select a new meat");
     loop();
