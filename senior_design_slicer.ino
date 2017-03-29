@@ -2,16 +2,20 @@
 #include <AccelStepper.h>
 #include <Wire.h>
 #include <Adafruit_MotorShield.h>
+#include "utility/Adafruit_MS_PWMServoDriver.h"
 
 //Creating the Adafruit motor shield object. Not sure this is needed with the AccelStepper library
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 
-Adafruit_MotorShield AFMStop(0x60); //this is the default address for I2C communication
+Adafruit_MotorShield AFMSbot(0x60); //this is the default address for I2C communication
+Adafruit_MotorShield AFMSmid(0x61); //this is the for the middle shield
+Adafruit_MotorShield AFMStop(0x62); //this is for the top shiled
+
 
 //Connecting the two steppers for X&Y here. Motor is 200 steps/rev 
 //* here is for declaring pointer for an instance of the class
-Adafruit_StepperMotor *myStepper1 = AFMStop.getStepper(200, 1); //first stepper on the X
-Adafruit_StepperMotor *myStepper2 = AFMStop.getStepper(200, 2); //second stepper on the Y
+Adafruit_StepperMotor *myStepper1 = AFMSbot.getStepper(200, 1); //stepper on the X
+Adafruit_StepperMotor *myStepper2 = AFMSbot.getStepper(200, 2); //stepper on the Y
 
 //defining the two wrapper functions for the first stepper motor here
 void forwardstep1() {
@@ -36,7 +40,7 @@ AccelStepper stepper2(forwardstep2, backwardstep2);
 
 //defining variables here for motion along the X-axis.
 double distance = 36; //the distance here is the total length of the X-slot. Distance in in
-double distance_per_revolution = 0.2519; //the distance moved per revolution of the motor. MASSIVE ASSUMPTION!
+double distance_per_revolution = 0.0099173; //the distance moved per revolution of the motor. MASSIVE ASSUMPTION!
 double first_slot =  9.12; //the distance between axle of left motor and center of first slot
 double second_slot = 16.12; //the distance between axle of left motor and center of second slot
 double third_slot = 23.12; //the distance between axle of left motor and center of third slot
@@ -67,20 +71,23 @@ double half_slot_width = slot_width/2; //to simulate back and forth motion
 //no of revolutions to simulate back and forth motion on either side
 int simulation_distance = half_slot_width/distance_per_revolution;
 
+//defining a variable here to accept input from Serial 
+int input = 1;
 
 void setup() {
   //creating Serial here to accept input
-  Serial.begin(9600);
+  Serial.begin(19200);
   while(!Serial); //waiting for serial port to start up
-  // put your setup code here, to run once:
-  AFMStop.begin(); //start the top motor shield here
 
-  //reading Serial data here
-  Serial.println("Program has started");
-
+  //starting the three motor shields here
+  AFMSbot.begin();
+  AFMSmid.begin();
+  AFMStop.begin();
+  
   //starting the I2C here. Remove serial data code above when I2C 
   //starts working
   Wire.begin();
+
 
   //defining the max speed and acceleration for each motor here
   stepper1.setMaxSpeed(100.0);
@@ -90,8 +97,8 @@ void setup() {
 }
   
 int back_and_forth_motion(int current_pos) {
-  stepper1.moveTo(current_pos + simulation_distance);
-  stepper1.moveTo(current_pos - simulation_distance);
+  stepper1.runToNewPosition(current_pos + simulation_distance);
+  stepper1.runToNewPosition(current_pos - simulation_distance);
   return 1;
 }
 
@@ -103,46 +110,51 @@ void loop() {
   static char c = ""; //defining the char as a static var here
 
   //Request data from slave Arduino here
-  Wire.requestFrom(8, 1); //requesting 1 byte of data to represent character
-  while(Wire.available()) {
-    c = Wire.read(); //Use this c in the switch case statement below
-  }
+//  Wire.requestFrom(8, 1); //requesting 1 byte of data to represent character
+//  while(Wire.available()) {
+//    c = Wire.read(); //Use this c in the switch case statement below
+//    Serial.println(c);
+//  }
 
   int return_value = 0; //variable to check when back_and_forth func has returned
   
   //switch case statements with 1,2,3 representing each meat slot 
   //Placing the switch statement here because currentPosition can only be queried from within 
   //the loop function
-  switch(c) {
+  switch(input) {
       
     case 1:
       stepper1.moveTo(first_slot_rev);
       Serial.println("Moving to the first slot");
       //this if statement gets executed when first slot gets hit
       if(stepper1.currentPosition() == first_slot_rev){
+        Serial.println("First target hit");
         stepper2.moveTo(Y_distance_rev);
-        return_value = back_and_forth_motion(stepper1.currentPosition());
+        if(stepper2.currentPosition() == Y_distance_rev){
+          return_value = back_and_forth_motion(stepper1.currentPosition()); 
+        }
       }
       break;
     case 2:
       stepper1.moveTo(second_slot_rev);
-    Serial.println("Moving to the second slot");
-    //if statement gets executed when second slot gets hit
-    if(stepper1.currentPosition() == second_slot_rev){
-      return_value = back_and_forth_motion(stepper1.currentPosition());
-    }
+      Serial.println("Moving to the second slot");
+      //if statement gets executed when second slot gets hit
+      if(stepper1.currentPosition() == second_slot_rev){
+        return_value = back_and_forth_motion(stepper1.currentPosition());
+      }
     break;
   case 3:
-    stepper1.moveTo(third_slot_rev);
-    Serial.println("Moving to the third slot");
-    //if statement gets executed when third slot gets hit
-    if(stepper1.currentPosition() == third_slot_rev){
-      return_value = back_and_forth_motion(stepper1.currentPosition());
+      stepper1.moveTo(third_slot_rev);
+      Serial.println("Moving to the third slot");
+      //if statement gets executed when third slot gets hit
+      if(stepper1.currentPosition() == third_slot_rev){
+        return_value = back_and_forth_motion(stepper1.currentPosition());
+      }
     }
-  }
 
   if(return_value == 1) {
-    stepper2.moveTo(0);
-    stepper1.moveTo(0);
+    stepper1.runToNewPosition(0);
+    stepper2.runToNewPosition(0);
+    input = 100; //changing the input here to prevent loop function from running indef
   }
 }
