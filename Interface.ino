@@ -50,7 +50,7 @@ char slices[2] = {'0', '1'}; // Initialize array to hold weight input:
                              // first& second inputs/digits, respectively.
 int slices_num = 0; // Initialize a decimal variable to store the weight value
 char reset = '0'; // Initialize a variable to serve as the reset command to LCD.
-
+char cancel = '0';
 /////////////////////////////////////////////////////////////////////////////
 
 void setup() {
@@ -83,7 +83,7 @@ void loop() {
 
   // Wake up the machine.
   keypad.waitForKey(); // The program will remain frozen here until a key is pressed.
-
+begining: 
   // Prompt user for meat selection.
   lcd.clear(); // Clear the LCD, otherwise you will be writing over the previous
                // message and have unwanted leftover characters.
@@ -101,16 +101,16 @@ void loop() {
     lcd.clear();
     lcd.setBacklight(RED);
     lcd.setCursor(0, 0);
-    lcd.print("Invalid selection");
+    lcd.print("Bad Selection");
     lcd.setCursor(0, 1);
-    lcd.print("Please select a new meat");
+    lcd.print("Select: (1)(2)(3) ");
     meat = keypad.waitForKey(); // Wait for a new user input.
   }
   
   //Still need to add code to the Mega
   //to read the event
   Wire.onRequest(requestEvent);
-
+slices:
   // Prompt the user for desired quantity.
   lcd.setBacklight(WHITE); // Reset the screen to white (it will be red if there was a meat error).
   lcd.clear(); // Clear the LCD, otherwise you will be writing over the previous
@@ -139,20 +139,20 @@ void loop() {
     slices_num = int(slices[0]);
   }
   else if (slices[1] != '#'){
-    slices_num = int(slices[0])*10 + int(slices[1]);
+    slices_num = ((slices[0])-48)*10 + (slices[1])-48;
+
   }
   
-if (slices num > 25) //I am trying to set the limit for number of slices ordered at 25, this can be changed. 
+if (slices_num > 25) //I am trying to set the limit for number of slices ordered at 25, this can be changed. 
   {
-    lcd.setCursor(0,0)
-    lcd.print("25 slices or less")
-    lcd.setCursor(0,1)
-    lcd.print("# Slices: ")
-    lcd.setCursor(10,1)
-    slices[0] = keypad.waitForKey(); // Pause and wait for first digit.
-    lcd.setCursor(11, 1);
-    lcd.print(slices[0]); // Print the first digit entered.
-    slices[1] = keypad.waitForKey(); // Pause and wait for second digit.
+    lcd.setCursor(0,0);
+    lcd.clear();
+    lcd.print("25 slices");
+    lcd.setCursor(0,1);
+    lcd.print("or less         ");
+    delay(2000); 
+    goto slices;
+    
   }
   
   
@@ -164,7 +164,29 @@ if (slices num > 25) //I am trying to set the limit for number of slices ordered
    *  information to the Mega to start the actual
    *  operation of the slicer.
    */
+   lcd.clear();
+   lcd.setCursor(0,0);
+   lcd.print("Meat: ");
+   lcd.setCursor(6,0);
+   lcd.print(meat);
+   lcd.setCursor(0,1);
+   lcd.print("# Slices: ");
+   lcd.setCursor(11,1);
+   lcd.print(slices_num);
+  
+   cancel =  keypad.waitForKey();
+   while(cancel != '#' && cancel != '*')
+   {
+    cancel = keypad.waitForKey();
+   }
 
+   if (cancel == '*' )
+   {
+    goto begining;
+   }
+
+  else
+  {
   /// ADD CODE TO PASS SLICES TO MEGA, so that slicer can begin slicing. ///
 
   /// ADD CODE TO WAIT FOR SIGNAL FROM MEGA, to indicate slicing is complete ///
@@ -190,6 +212,7 @@ if (slices num > 25) //I am trying to set the limit for number of slices ordered
   lcd.print("Press any key");
   // Code goes back to top, waiting for any key-press to wake up machine.
 }
+}
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -199,4 +222,3 @@ if (slices num > 25) //I am trying to set the limit for number of slices ordered
 void requestEvent() {
   Wire.write(meat);
 }
-
