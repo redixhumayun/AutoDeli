@@ -124,6 +124,7 @@ void loop() {
   lcd.setCursor(9, 1);
   lcd.print(slices[0]); // Print the first digit entered.
   slices[1] = keypad.waitForKey(); // Pause and wait for second digit.
+  
   if (slices[1] == '#'){
     
   }
@@ -140,6 +141,20 @@ void loop() {
   else if (slices[1] != '#'){
     slices_num = int(slices[0])*10 + int(slices[1]);
   }
+  
+if (slices num > 25) //I am trying to set the limit for number of slices ordered at 25, this can be changed. 
+  {
+    lcd.setCursor(0,0)
+    lcd.print("25 slices or less")
+    lcd.setCursor(0,1)
+    lcd.print("# Slices: ")
+    lcd.setCursor(10,1)
+    slices[0] = keypad.waitForKey(); // Pause and wait for first digit.
+    lcd.setCursor(11, 1);
+    lcd.print(slices[0]); // Print the first digit entered.
+    slices[1] = keypad.waitForKey(); // Pause and wait for second digit.
+  }
+  
   
   /// ADD ERROR HANDLING FOR SLICES SELECTION HERE ///
 
