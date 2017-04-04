@@ -72,7 +72,7 @@ void setup() {
   lcd.setCursor(0, 1); // Set cursor all the way to left on the 2nd line of LCD.
   lcd.print("Press any key");
 
-  Wire.begin(8); //setting up I2C serial bus here. This is slave device #8
+  Wire.begin(); //setting up I2C serial bus here. This is slave device #8
 
 }
 
@@ -82,8 +82,11 @@ void loop() {
   // This is basically a while loop that just runs forever.
 
   // Wake up the machine.
+
+beginning:  
   keypad.waitForKey(); // The program will remain frozen here until a key is pressed.
-begining: 
+
+meat_input: 
   // Prompt user for meat selection.
   lcd.clear(); // Clear the LCD, otherwise you will be writing over the previous
                // message and have unwanted leftover characters.
@@ -109,8 +112,11 @@ begining:
   
   //Still need to add code to the Mega
   //to read the event
-  Wire.onRequest(requestEvent);
-slices:
+  Wire.beginTransmission(8);
+  Wire.write(int(meat)-48);
+  Wire.endTransmission();
+  
+slices_input:
   // Prompt the user for desired quantity.
   lcd.setBacklight(WHITE); // Reset the screen to white (it will be red if there was a meat error).
   lcd.clear(); // Clear the LCD, otherwise you will be writing over the previous
@@ -126,7 +132,7 @@ slices:
   slices[1] = keypad.waitForKey(); // Pause and wait for second digit.
   
   if (slices[1] == '#'){
-    
+    // do nothing
   }
   else if (slices[1] != '#'){
     lcd.setCursor(10, 1);
@@ -142,52 +148,47 @@ slices:
     slices_num = ((slices[0])-48)*10 + (slices[1])-48;
 
   }
+
+  // Error handling for the slices input.
+  if (slices_num > 25) //I am trying to set the limit for number of slices ordered at 25, this can be changed. 
+    {
+      lcd.setCursor(0,0);
+      lcd.clear();
+      lcd.print("25 slices");
+      lcd.setCursor(0,1);
+      lcd.print("or less         ");
+      delay(2000); 
+      goto slices_input;
+    }
   
-if (slices_num > 25) //I am trying to set the limit for number of slices ordered at 25, this can be changed. 
+  // Pass the number of slices to the Mega.
+  Wire.beginTransmission(8);
+  Wire.write(slices_num);
+  Wire.endTransmission();
+ 
+  // Confirmation screen for user to approve the inputs.
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Meat: ");
+  lcd.setCursor(6,0);
+  lcd.print(meat);
+  lcd.setCursor(0,1);
+  lcd.print("# Slices: ");
+  lcd.setCursor(11,1);
+  lcd.print(slices_num);
+  
+  cancel =  keypad.waitForKey();
+  while(cancel != '#' && cancel != '*')
   {
-    lcd.setCursor(0,0);
-    lcd.clear();
-    lcd.print("25 slices");
-    lcd.setCursor(0,1);
-    lcd.print("or less         ");
-    delay(2000); 
-    goto slices;
-    
+   cancel = keypad.waitForKey();
+  }
+
+  if (cancel == '*' )
+  {
+   goto meat_input;
   }
   
-  
-  /// ADD ERROR HANDLING FOR SLICES SELECTION HERE ///
-
-  /* We should add another "screen" here that displays
-   *  what was entered and allows the user to confirm
-   *  the values (yes or no) before passing all the 
-   *  information to the Mega to start the actual
-   *  operation of the slicer.
-   */
-   lcd.clear();
-   lcd.setCursor(0,0);
-   lcd.print("Meat: ");
-   lcd.setCursor(6,0);
-   lcd.print(meat);
-   lcd.setCursor(0,1);
-   lcd.print("# Slices: ");
-   lcd.setCursor(11,1);
-   lcd.print(slices_num);
-  
-   cancel =  keypad.waitForKey();
-   while(cancel != '#' && cancel != '*')
-   {
-    cancel = keypad.waitForKey();
-   }
-
-   if (cancel == '*' )
-   {
-    goto begining;
-   }
-
-  else
-  {
-  /// ADD CODE TO PASS SLICES TO MEGA, so that slicer can begin slicing. ///
+  // Tell the slicer to begin slicing.
 
   /// ADD CODE TO WAIT FOR SIGNAL FROM MEGA, to indicate slicing is complete ///
 
@@ -211,7 +212,6 @@ if (slices_num > 25) //I am trying to set the limit for number of slices ordered
   lcd.setCursor(0, 1);
   lcd.print("Press any key");
   // Code goes back to top, waiting for any key-press to wake up machine.
-}
 }
 
 /////////////////////////////////////////////////////////////////////////////
