@@ -71,12 +71,14 @@ double half_slot_width = slot_width/2; //to simulate back and forth motion
 //no of revolutions to simulate back and forth motion on either side
 int simulation_distance = half_slot_width/distance_per_revolution;
 
-//defining a variable here to accept input from Serial 
-int input = 1;
+//defining a variable here to accept input from the Arduino Uno
+char c = '0';
+int meat = 0;
+char slices[2] = {};
 
 void setup() {
   //creating Serial here to accept input
-  Serial.begin(19200);
+  Serial.begin(9600);
   while(!Serial); //waiting for serial port to start up
 
   //starting the three motor shields here
@@ -86,7 +88,8 @@ void setup() {
   
   //starting the I2C here. Remove serial data code above when I2C 
   //starts working
-  Wire.begin();
+  Wire.begin(8);
+  Wire.onReceive(getValues);
 
 
   //defining the max speed and acceleration for each motor here
@@ -94,6 +97,22 @@ void setup() {
   stepper1.setAcceleration(100.0);
   stepper2.setMaxSpeed(100.0);
   stepper2.setAcceleration(100.0);
+}
+
+void getValues() {
+  while(Wire.available()){
+    c = Wire.read();
+    Serial.println(c);
+    if(c == 'm') {
+      Serial.println("its a meat");
+      meat = Wire.read();
+      Serial.println(meat);
+    }else if(c == 'n') {
+      slices[0] = Wire.read();
+      slices[1] = Wire.read();
+      Serial.println(slices);
+    }
+  }
 }
   
 int back_and_forth_motion(int current_pos) {
@@ -107,21 +126,12 @@ void loop() {
   stepper1.run();
   stepper2.run();
 
-  static char c = ""; //defining the char as a static var here
-
-  //Request data from slave Arduino here
-//  Wire.requestFrom(8, 1); //requesting 1 byte of data to represent character
-//  while(Wire.available()) {
-//    c = Wire.read(); //Use this c in the switch case statement below
-//    Serial.println(c);
-//  }
-
   int return_value = 0; //variable to check when back_and_forth func has returned
   
   //switch case statements with 1,2,3 representing each meat slot 
   //Placing the switch statement here because currentPosition can only be queried from within 
   //the loop function
-  switch(input) {
+  switch(c) {
       
     case 1:
       stepper1.moveTo(first_slot_rev);
@@ -155,6 +165,6 @@ void loop() {
   if(return_value == 1) {
     stepper1.runToNewPosition(0);
     stepper2.runToNewPosition(0);
-    input = 100; //changing the input here to prevent loop function from running indef
+    c = 100; //changing the input here to prevent loop function from running indef
   }
 }
