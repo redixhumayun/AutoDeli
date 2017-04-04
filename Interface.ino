@@ -51,6 +51,8 @@ char slices[2] = {'0', '1'}; // Initialize array to hold weight input:
 int slices_num = 0; // Initialize a decimal variable to store the weight value
 char reset = '0'; // Initialize a variable to serve as the reset command to LCD.
 char cancel = '0';
+char meat_msg[3] = "m";
+
 /////////////////////////////////////////////////////////////////////////////
 
 void setup() {
@@ -81,6 +83,7 @@ void setup() {
 void loop() {
   // This is basically a while loop that just runs forever.
 
+  
   // Wake up the machine.
 
 beginning:  
@@ -109,11 +112,14 @@ meat_input:
     lcd.print("Select: (1)(2)(3) ");
     meat = keypad.waitForKey(); // Wait for a new user input.
   }
+
+  meat_msg[1] = meat;
+  Serial.println(meat_msg);
   
   //Still need to add code to the Mega
   //to read the event
   Wire.beginTransmission(8);
-  Wire.write(int(meat)-48);
+  Wire.write(meat_msg);
   Wire.endTransmission();
   
 slices_input:
