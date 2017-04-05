@@ -71,10 +71,15 @@ double half_slot_width = slot_width/2; //to simulate back and forth motion
 //no of revolutions to simulate back and forth motion on either side
 int simulation_distance = half_slot_width/distance_per_revolution;
 
-//defining a variable here to accept input from the Arduino Uno
+//defining variables here to accept input from the Arduino Uno
 char c = '0';
 int meat = 0;
 char slices[2] = {};
+int num_of_slices = 0; //will contain integer value of slices char array
+boolean slices_received = false; //flag to check if number of slices received
+char start_signal = "";
+
+int return_value = 0; //variable to check when back_and_forth func has returned
 
 void setup() {
   //creating Serial here to accept input
@@ -86,8 +91,7 @@ void setup() {
   AFMSmid.begin();
   AFMStop.begin();
   
-  //starting the I2C here. Remove serial data code above when I2C 
-  //starts working
+  //starting the I2C here as slave device #8.
   Wire.begin(8);
   Wire.onReceive(getValues);
 
@@ -103,21 +107,48 @@ void getValues() {
   while(Wire.available()){
     c = Wire.read();
     Serial.println(c);
-    if(c == 'm') {
-      Serial.println("its a meat");
-      meat = Wire.read();
-      Serial.println(meat);
-    }else if(c == 'n') {
-      slices[0] = Wire.read();
-      slices[1] = Wire.read();
-      Serial.println(slices);
+    switch(c) {
+      case 'm': 
+        Serial.println("case 1 got executed");
+        meat = Wire.read() - 48; //subtracting 48 to get the actual value
+        Serial.println(meat);
+        Serial.println(Wire.available());
+        Serial.println("------");
+
+        break;
+
+      case 'n':
+        Serial.println("case 2 got executed");
+        slices[0] = Wire.read();
+        slices[1] = Wire.read();
+        num_of_slices = atoi(slices);
+        slices_received = true;
+        while(Wire.available()){
+          Serial.println(Wire.read());
+        }
+        Serial.println("------");
+        break;
+
+      case 'S':
+        Serial.println("case 3 got executed");
+        start_signal = c;
+        break;
     }
   }
 }
+
   
-int back_and_forth_motion(int current_pos) {
+int back_and_forth_motion() {
+  Serial.println("The number of slices is ");
+  Serial.println(num_of_slices);
+  int current_pos = stepper1.currentPosition();
+  
   stepper1.runToNewPosition(current_pos + simulation_distance);
   stepper1.runToNewPosition(current_pos - simulation_distance);
+  if(num_of_slices > 0) {
+    num_of_slices = num_of_slices - 1;
+    back_and_forth_motion();
+  }
   return 1;
 }
 
@@ -125,46 +156,41 @@ void loop() {
   // put your main code here, to run repeatedly:
   stepper1.run();
   stepper2.run();
-
-  int return_value = 0; //variable to check when back_and_forth func has returned
   
   //switch case statements with 1,2,3 representing each meat slot 
   //Placing the switch statement here because currentPosition can only be queried from within 
   //the loop function
-  switch(c) {
+  switch(meat) {
       
     case 1:
       stepper1.moveTo(first_slot_rev);
-      Serial.println("Moving to the first slot");
+      
       //this if statement gets executed when first slot gets hit
-      if(stepper1.currentPosition() == first_slot_rev){
-        Serial.println("First target hit");
-        stepper2.moveTo(Y_distance_rev);
-        if(stepper2.currentPosition() == Y_distance_rev){
-          return_value = back_and_forth_motion(stepper1.currentPosition()); 
-        }
+      if(stepper1.currentPosition() == first_slot_rev && slices_received == true){
+       back_and_forth_motion();
       }
       break;
     case 2:
       stepper1.moveTo(second_slot_rev);
-      Serial.println("Moving to the second slot");
+
       //if statement gets executed when second slot gets hit
-      if(stepper1.currentPosition() == second_slot_rev){
-        return_value = back_and_forth_motion(stepper1.currentPosition());
+      if(stepper1.currentPosition() == second_slot_rev && slices_received == true){
+        return_value = back_and_forth_motion();
       }
     break;
   case 3:
       stepper1.moveTo(third_slot_rev);
-      Serial.println("Moving to the third slot");
+
       //if statement gets executed when third slot gets hit
-      if(stepper1.currentPosition() == third_slot_rev){
-        return_value = back_and_forth_motion(stepper1.currentPosition());
+      if(stepper1.currentPosition() == third_slot_rev && slices_received == true){
+        return_value = back_and_forth_motion();
       }
     }
 
   if(return_value == 1) {
     stepper1.runToNewPosition(0);
     stepper2.runToNewPosition(0);
-    c = 100; //changing the input here to prevent loop function from running indef
+    meat = 0; //changing the input here to prevent loop function from running indef
+    slices_received = false; //setting this back to false 
   }
 }
