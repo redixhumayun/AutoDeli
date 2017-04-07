@@ -122,6 +122,7 @@ void getValues() {
         slices[0] = Wire.read();
         slices[1] = Wire.read();
         num_of_slices = atoi(slices);
+        Serial.println(num_of_slices);
         Serial.println("------");
         break;
 
@@ -156,19 +157,21 @@ void loop() {
   //switch case statements with 1,2,3 representing each meat slot 
   //Placing the switch statement here because currentPosition can only be queried from within 
   //the loop function
+  if(start_signal == 'S'){
+    
   switch(meat) {
       
     case 1:
       stepper1.moveTo(first_slot_rev);
       //this if statement gets executed when first slot gets hit
-      Serial.println("case 1");
+      //Serial.println("case 1");
       if(stepper1.currentPosition() == first_slot_rev){
        return_value = back_and_forth_motion();
       }
       break;
     case 2:
       stepper1.moveTo(second_slot_rev);
-      Serial.println("case 2");
+      //Serial.println("case 2");
       //if statement gets executed when second slot gets hit
       if(stepper1.currentPosition() == second_slot_rev){
         return_value = back_and_forth_motion();
@@ -176,23 +179,27 @@ void loop() {
     break;
   case 3:
       stepper1.moveTo(third_slot_rev);
-      Serial.println("case 3");
+      //Serial.println("case 3");
       //if statement gets executed when third slot gets hit
       if(stepper1.currentPosition() == third_slot_rev){
         return_value = back_and_forth_motion();
       }
     }
-
+  }
 
   if(return_value == 1) {
     stepper1.runToNewPosition(0);
     stepper2.runToNewPosition(0);
     meat = 0; //changing the input here to prevent loop function from running indef
-    Serial.println("Returned Value");
+    //Serial.println("Returned Value");
   }
 }
 
 void requestEvent(){
+  if (return_value == 1) {
     Wire.write("K");
+    Serial.println("K was sent");
+    return_value = 0;
   }
+}
  
