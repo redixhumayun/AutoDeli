@@ -46,10 +46,10 @@ Adafruit_RGBLCDShield lcd = Adafruit_RGBLCDShield(); // Create a virtual object 
 ////////////// Declare variables ////////////////////////////////////////////
 
 char meat = '0'; // Initialize meat selection variable.
-char slices[2] = {'0', '1'}; // Initialize array to hold weight input:
+char slices[3] = {'n','0', '1'}; // Initialize array to hold weight input:
                              // first& second inputs/digits, respectively.
-int slices_num = 0; // Initialize a decimal variable to store the weight value
 char reset = '0'; // Initialize a variable to serve as the reset command to LCD.
+int slices_num = 0; 
 char cancel = '0';
 char meat_msg[3] = "m";
 
@@ -74,16 +74,13 @@ void setup() {
   lcd.setCursor(0, 1); // Set cursor all the way to left on the 2nd line of LCD.
   lcd.print("Press any key");
 
-  Wire.begin(); //setting up I2C serial bus here. This is slave device #8
+  Wire.begin(9); //setting up I2C serial bus here. This is master writing device #9
 
 }
 
 ///////////////////////////////////////////////////////////////////////
 
-void loop() {
-  // This is basically a while loop that just runs forever.
-
-  
+void loop() {  
   // Wake up the machine.
 
 beginning:  
@@ -116,8 +113,7 @@ meat_input:
   meat_msg[1] = meat;
   Serial.println(meat_msg);
   
-  //Still need to add code to the Mega
-  //to read the event
+  //Writing to slave device #8, which is the Mega
   Wire.beginTransmission(8);
   Wire.write(meat_msg);
   Wire.endTransmission();
@@ -132,27 +128,28 @@ slices_input:
   lcd.setCursor(0, 1); // Set cursor to the bottom left corner of LCD.
   lcd.print("slices: "); // Print a field to 2nd line.
   lcd.setCursor(8, 1);
-  slices[0] = keypad.waitForKey(); // Pause and wait for first digit.
+  slices[1] = keypad.waitForKey(); // Pause and wait for first digit.
   lcd.setCursor(9, 1);
-  lcd.print(slices[0]); // Print the first digit entered.
-  slices[1] = keypad.waitForKey(); // Pause and wait for second digit.
+  lcd.print(slices[1]); // Print the first digit entered.
+  slices[2] = keypad.waitForKey(); // Pause and wait for second digit.
   
-  if (slices[1] == '#'){
-    // do nothing
-  }
-  else if (slices[1] != '#'){
+  if (slices[2] != '#'){
+    Serial.println("Entered this if statement");
+    slices_num = (int(slices[1])-48) * 10 + (int(slices[2])) - 48;
+    Serial.println(slices_num);
     lcd.setCursor(10, 1);
-    lcd.print(slices[1]); // Print the second digit entered.
+    lcd.print(slices[2]); // Print the second digit entered.
     delay(500); // Pause and wait 500 ms.
+    
   }
-  
-  // Convert the slices from character array to a numerical value, for error-checking comparison and passing to Mega.
-  if (slices[1] == '#'){
-    slices_num = int(slices[0]);
-  }
-  else if (slices[1] != '#'){
-    slices_num = ((slices[0])-48)*10 + (slices[1])-48;
-
+  else if(slices[2] == '#') {
+    slices[2] = "";
+    Wire.beginTransmission(8);
+    Wire.write(slices);
+    Wire.endTransmission();
+  } 
+  else if(slices[2] == '*') {
+    goto slices_input;
   }
 
   // Error handling for the slices input.
@@ -169,7 +166,7 @@ slices_input:
   
   // Pass the number of slices to the Mega.
   Wire.beginTransmission(8);
-  Wire.write(slices_num);
+  Wire.write(slices);
   Wire.endTransmission();
  
   // Confirmation screen for user to approve the inputs.
@@ -181,7 +178,9 @@ slices_input:
   lcd.setCursor(0,1);
   lcd.print("# Slices: ");
   lcd.setCursor(11,1);
-  lcd.print(slices_num);
+  lcd.print(slices[1]);
+  lcd.setCursor(12,1);
+  lcd.print(slices[2]);
   
   cancel =  keypad.waitForKey();
   while(cancel != '#' && cancel != '*')
@@ -193,11 +192,28 @@ slices_input:
   {
    goto meat_input;
   }
+
+  else if(cancel == '#') {
+    Wire.beginTransmission(8);
+    Wire.write("S");
+    Wire.endTransmission();
+  }
+
+  while(reset !=  '#'){   // If the user did not press the # key:
+    //Code to check if Mega is done slicing
+    Wire.requestFrom(8, 1);
   
-  // Tell the slicer to begin slicing.
-
-  /// ADD CODE TO WAIT FOR SIGNAL FROM MEGA, to indicate slicing is complete ///
-
+    while(Wire.available()) {
+      Serial.println("Receiving data");
+      char val = Wire.read();
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("Done");
+      if(val == "K") {
+        loop(); // Code goes back to top, waiting for any key-press to wake up machine.
+      }
+    }
+ 
   /// When slicing is complete:
   lcd.clear(); // Clear the LCD, otherwise you will be writing over the previous
                // message and have unwanted leftover characters.
@@ -209,22 +225,8 @@ slices_input:
 
   // Press the # key to reset the LCD to the home screen.
   reset =  keypad.waitForKey(); // The program will remain frozen here until a key is pressed.
-  while(reset !=  '#'){   // If the user did not press the # key:
-    reset =  keypad.waitForKey(); // Loop forever until user presses the # key.
+  
   }
-  lcd.clear();
-  lcd.setBacklight(BLUE); 
-  lcd.print(" -- AutoDeli -- "); 
-  lcd.setCursor(0, 1);
-  lcd.print("Press any key");
-  // Code goes back to top, waiting for any key-press to wake up machine.
 }
 
 /////////////////////////////////////////////////////////////////////////////
-
-// Sub-function declarations
-
-//function passing the selected meat to the master reader (MEGA)
-void requestEvent() {
-  Wire.write(meat);
-}
