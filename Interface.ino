@@ -133,7 +133,7 @@ slices_input:
   lcd.print(slices[1]); // Print the first digit entered.
   slices[2] = keypad.waitForKey(); // Pause and wait for second digit.
   
-  if (slices[2] != '#'){
+  if (slices[2] != '#'){ //This is for a double digit slice
     Serial.println("Entered this if statement");
     slices_num = (int(slices[1])-48) * 10 + (int(slices[2])) - 48;
     Serial.println(slices_num);
@@ -144,14 +144,11 @@ slices_input:
   }
   else if(slices[2] == '#') {
     slices[2] = "";
-    Wire.beginTransmission(8);
-    Wire.write(slices);
-    Wire.endTransmission();
   } 
   else if(slices[2] == '*') {
     goto slices_input;
   }
-
+  
   // Error handling for the slices input.
   if (slices_num > 25) //I am trying to set the limit for number of slices ordered at 25, this can be changed. 
     {
@@ -163,11 +160,12 @@ slices_input:
       delay(2000); 
       goto slices_input;
     }
-  
-  // Pass the number of slices to the Mega.
+
+  //Sending the number of slices to the Mega
   Wire.beginTransmission(8);
   Wire.write(slices);
   Wire.endTransmission();
+
  
   // Confirmation screen for user to approve the inputs.
   lcd.clear();
@@ -181,38 +179,37 @@ slices_input:
   lcd.print(slices[1]);
   lcd.setCursor(12,1);
   lcd.print(slices[2]);
-  
+
+  //Wait for the user to approve or deny the order
   cancel =  keypad.waitForKey();
+
+  //Waiting for user input of either # or * only
   while(cancel != '#' && cancel != '*')
   {
    cancel = keypad.waitForKey();
   }
 
+  //The cancel option
   if (cancel == '*' )
   {
    goto meat_input;
   }
 
+  //The accept option
   else if(cancel == '#') {
     Wire.beginTransmission(8);
     Wire.write("S");
     Wire.endTransmission();
   }
 
-  while(reset !=  '#'){   // If the user did not press the # key:
-    //Code to check if Mega is done slicing
+  Wire.requestFrom(8, 1);
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Slicing...");
+  while(Wire.read() != 'K') {
     Wire.requestFrom(8, 1);
-  
-    while(Wire.available()) {
-      Serial.println("Receiving data");
-      char val = Wire.read();
-      lcd.clear();
-      lcd.setCursor(0,0);
-      lcd.print("Done");
-      if(val == "K") {
-        loop(); // Code goes back to top, waiting for any key-press to wake up machine.
-      }
-    }
+  }
  
   /// When slicing is complete:
   lcd.clear(); // Clear the LCD, otherwise you will be writing over the previous
@@ -225,8 +222,17 @@ slices_input:
 
   // Press the # key to reset the LCD to the home screen.
   reset =  keypad.waitForKey(); // The program will remain frozen here until a key is pressed.
-  
-  }
+
+  //Running setup code again 
+  lcd.setBacklight(BLUE); // Turn on the backlight of the display,
+                          // otherwise it's really hard to read the text.
+  lcd.setCursor(0, 0);                        
+  lcd.print(" -- AutoDeli -- "); // Prints message to the LCD. Note: Upon booting,
+                                 // the display will default to the top left corner.
+                                 // If you want to print somewhere else, you have to
+                                 // specify where.
+  lcd.setCursor(0, 1); // Set cursor all the way to left on the 2nd line of LCD.
+  lcd.print("Press any key");
+
 }
 
-/////////////////////////////////////////////////////////////////////////////
