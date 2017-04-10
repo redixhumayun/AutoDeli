@@ -48,9 +48,11 @@ AccelStepper stepper4(forwardstep4, backwardstep4);
 AccelStepper stepper5(forwardstep5, backwardstep5);
 
 //defining variables for motion of backstop
-double distance_per_rev = 0.0099173; //the distance moved per revolution of the motor. MASSIVE ASSUMPTION!
-double slot_length = ; //the maximum distance the backstop can move (still need to measure)
-int lead_screw_rev = slot_length/distance_per_rev; //no. of revolutions for backstop to travel full length of lead screw
+double distance_per_step = 0.001574803; //the distance moved per step of the motor in inches. MASSIVE ASSUMPTION!
+double slot_length = 9; //the maximum distance the backstop can move in inches (still need to measure for exact value)
+int lead_screw_steps = 400; //initial no. of steps for backstops
+int max_steps = slot_length/distance_per_step; //no. of steps for backstop to travel full length of lead screw
+int total_steps = 0; //total no. of steps the backstop has traveled 
 
 //defining variables for force sensitive resistor
 int fsrPin = 0; //the FSR is connected to a0 on the Mega
@@ -98,14 +100,22 @@ void loop() {
           fsrReading = analogRead(fsrPin);  
           Serial.print("Analog reading = ");
           Serial.print(fsrReading);     // the raw analog reading
-          while (fsrReading < 200) {
-            stepper3.moveTo(lead_screw_rev); //moves slot 1 backstop if FSR reading is below 200
+          total_steps = 0; //
+          while (fsrReading < 200 && total_steps < max_rev) {
+            if (fsrReading == 0) {
+              lead_screw_steps = 400;
+            }
+            else {
+              lead_screw_steps = 10;
+            }
+            stepper3.moveTo(lead_screw_rev); //moves slot 1 backstop if FSR is below 200
+            total_steps = total_steps + lead_screw_steps;
             fsrReading = analogRead(fsrPin); //updates the reading 
           }
-            Serial.println("meat in contact with slicer"); //not sure if there's a function to hold a motor in place
+            Serial.println("meat in contact with slicer");
           //return_value = back_and_forth_motion(stepper1.currentPosition()); 
        // }
-      stepper3.moveTo(-stepper3.currentPosition()); //returns slot 1 backstop to home position
+      stepper3.moveTo(0); //returns slot 1 backstop to home position
       //}
       //break;
     //case 2:
@@ -113,16 +123,25 @@ void loop() {
       //Serial.println("Moving to the second slot");
       //if statement gets executed when second slot gets hit
       //if(stepper1.currentPosition() == second_slot_rev){
-        fsrReading = analogRead(fsrPin);  
-        Serial.print("Analog reading = ");
-        Serial.print(fsrReading);     // the raw analog reading
-        while (fsrReading < 200) {
-          stepper4.moveTo(lead_screw_rev); //moves slot 2 backstop if FSR reading is below 200
-          fsrReading = analogRead(fsrPin); //updates the reading of force sensor
-        }
-        Serial.println("meat in contact with slicer"); //not sure if there's a function to hold a motor in place
-        //return_value = back_and_forth_motion(stepper1.currentPosition());
-        stepper4.moveTo(-stepper4.currentPosition()); //returns slot 2 backstop to home position
+          fsrReading = analogRead(fsrPin);  
+          Serial.print("Analog reading = ");
+          Serial.print(fsrReading);     // the raw analog reading
+          total_steps = 0;
+          while (fsrReading < 200 && total_steps < max_rev) {
+            if (fsrReading == 0) {
+              lead_screw_steps = 400;
+            }
+            else {
+              lead_screw_steps = 10;
+            }
+            stepper4.moveTo(lead_screw_rev); //moves slot 2 backstop if FSR is below 200
+            total_steps = total_steps + lead_screw_steps;
+            fsrReading = analogRead(fsrPin); //updates the reading 
+          }
+            Serial.println("meat in contact with slicer");
+          //return_value = back_and_forth_motion(stepper1.currentPosition()); 
+       // }
+      stepper4.moveTo(0); //returns slot 2 backstop to home position
         //}
       //break;
   //case 3:
@@ -130,16 +149,25 @@ void loop() {
       //Serial.println("Moving to the third slot");
       //if statement gets executed when third slot gets hit
       //if(stepper1.currentPosition() == third_slot_rev){
-        fsrReading = analogRead(fsrPin);  
-        Serial.print("Analog reading = ");
-        Serial.print(fsrReading);     // the raw analog reading
-        while (fsrReading < 200) {
-          stepper4.moveTo(lead_screw_rev); //moves slot 3 backstop if FSR reading is below 200
-          fsrReading = analogRead(fsrPin); //updates the reading of force sensor 
-        }
-        Serial.println("meat in contact with slicer"); //not sure if there's a function to hold a motor in place
-        //return_value = back_and_forth_motion(stepper1.currentPosition());
-        stepper5.moveTo(-stepper5.currentPosition()); //returns slot 3 backstop to home position
+          fsrReading = analogRead(fsrPin);  
+          Serial.print("Analog reading = ");
+          Serial.print(fsrReading);     // the raw analog reading
+          total_steps = 0;
+          while (fsrReading < 200 && total_steps < max_rev) {
+            if (fsrReading == 0) {
+              lead_screw_steps = 400;
+            }
+            else {
+              lead_screw_steps = 10;
+            }
+            stepper5.moveTo(lead_screw_rev); //moves slot 2 backstop if FSR is below 200
+            total_steps = total_steps + lead_screw_steps;
+            fsrReading = analogRead(fsrPin); //updates the reading 
+          }
+            Serial.println("meat in contact with slicer");
+          //return_value = back_and_forth_motion(stepper1.currentPosition()); 
+       // }
+      stepper5.moveTo(0); //returns slot 2 backstop to home position
       //}
 //}
 
