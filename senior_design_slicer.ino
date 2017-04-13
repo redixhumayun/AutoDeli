@@ -1,4 +1,3 @@
-
 //Including all the required libraries here. Wire.h required for I2C intercommunication
 #include <AccelStepper.h>
 #include <Wire.h>
@@ -17,44 +16,80 @@ Adafruit_MotorShield AFMStop(0x62); //this is for the top shiled
 //* here is for declaring pointer for an instance of the class
 Adafruit_StepperMotor *myStepper1 = AFMSbot.getStepper(200, 1); //stepper on the X
 Adafruit_StepperMotor *myStepper2 = AFMSbot.getStepper(200, 2); //stepper on the Y
+Adafruit_StepperMotor *myStepper3 = AFMSmid.getStepper(200, 1); //stepper on backstop 1
+Adafruit_StepperMotor *myStepper4 = AFMSmid.getStepper(200, 2); //stepper on backstop 2
+Adafruit_StepperMotor *myStepper5 = AFMStop.getStepper(200, 1); //stepper on backstop 3
+
 
 //defining the two wrapper functions for the first stepper motor here
 void forwardstep1() {
-  myStepper1->onestep(FORWARD, DOUBLE); //using double here for more torque. Change to microstep for more precision
+  myStepper1->onestep(FORWARD, SINGLE); //using double here for more torque. Change to microstep for more precision
 }
 void backwardstep1() {
-  myStepper1->onestep(BACKWARD, DOUBLE);
+  myStepper1->onestep(BACKWARD, SINGLE);
 }
 
 //defining the two wrapper functions for the second stepper motor here
 void forwardstep2() {
-  myStepper2->onestep(FORWARD, DOUBLE);
+  myStepper2->onestep(BACKWARD, SINGLE);
 }
 void backwardstep2() {
-  myStepper2->onestep(BACKWARD, DOUBLE);
+  myStepper2->onestep(FORWARD, SINGLE);
+}
+
+//defining the two wrapper functions for the first backstop stepper motor here
+void forwardstep3() {
+  myStepper3->onestep(FORWARD, DOUBLE); //using double here for more torque. Change to microstep for more precision
+}
+void backwardstep3() {
+  myStepper3->onestep(BACKWARD, DOUBLE);
+}
+
+//defining the two wrapper functions for the second backstop stepper motor here
+void forwardstep4() {
+  myStepper4->onestep(FORWARD, DOUBLE);
+}
+void backwardstep4() {
+  myStepper4->onestep(BACKWARD, DOUBLE);
+}
+
+//defining the two wrapper functions for the third backstop stepper motor here
+void forwardstep5() {
+  myStepper5->onestep(FORWARD, DOUBLE);
+}
+
+void backwardstep5() {
+  myStepper5->onestep(BACKWARD, DOUBLE);
 }
 
 
 //Wrapping the 3 steppers into an AccelStepper object
 AccelStepper stepper1(forwardstep1, backwardstep1);
 AccelStepper stepper2(forwardstep2, backwardstep2);
+AccelStepper stepper3(forwardstep3, backwardstep3);
+AccelStepper stepper4(forwardstep4, backwardstep4);
+AccelStepper stepper5(forwardstep5, backwardstep5);
+
+//defining fsrResistor here
+int fsrPin = 0; //the FSR is connected to a0 on the Mega
+int fsrReading; //the analog reading for the FSR resistor divider
+
+//defining variables for motion of backstop
+double distance_per_step = 0.001574803; //the distance moved per step of the motor in inches. MASSIVE ASSUMPTION!
+double slot_length = 9; //the maximum distance the backstop can move in inches (still need to measure for exact value)
+int lead_screw_steps = 200; //initial no. of steps for backstops
+int max_steps = slot_length/distance_per_step; //no. of steps for backstop to travel full length of lead screw
+int total_steps = 0; //total no. of steps the backstop has traveled 
 
 //defining variables here for motion along the X-axis.
 double distance = 36; //the distance here is the total length of the X-slot. Distance in in
-double distance_per_revolution = 0.0099173; //the distance moved per revolution of the motor. MASSIVE ASSUMPTION!
-double first_slot =  9.12; //the distance between axle of left motor and center of first slot
-double second_slot = 16.12; //the distance between axle of left motor and center of second slot
-double third_slot = 23.12; //the distance between axle of left motor and center of third slot
+double distance_per_revolution = 0.008; //the distance moved per revolution of the motor. MASSIVE ASSUMPTION!
+double first_slot =  0; //the distance between axle of left motor and center of first slot
+double second_slot = 7; //the distance between axle of left motor and center of second slot
+double third_slot = 13.75; //the distance between axle of left motor and center of third slot
 
 //variables for motion along the Y-axis
-double Y_distance = 10.3; //distance the slicer will have to move forward to be flush with meat
-
-
-//these variables define the number of revolutions that the motor 
-//will go through to reach each slot. 
-//These are defined as int because they all need to be whole numbers. 
-//The zero position is taken to be when the center of the slicer that is right over 
-//the axle of the motor on the left
+double Y_distance = 1.5; //distance the slicer will have to move forward to be flush with meat
 
 //no of revolutions to reach 1st slot
 int first_slot_rev = first_slot/distance_per_revolution; 
@@ -67,10 +102,9 @@ int Y_distance_rev = Y_distance/distance_per_revolution;
 
 
 //variables for simulating back and forth motion go here
-double slot_width = 6.5; //random value here. Replace with actual value
-double half_slot_width = slot_width/2; //to simulate back and forth motion
+double simulation_width = 9.75; //random value here. Replace with actual value
 //no of revolutions to simulate back and forth motion on either side
-int simulation_distance = half_slot_width/distance_per_revolution;
+int simulation_distance = simulation_width/distance_per_revolution;
 
 //defining variables here to accept input from the Arduino Uno
 char c = '0';
@@ -80,6 +114,9 @@ int num_of_slices = 0; //will contain integer value of slices char array
 char start_signal = "";
 
 int return_value = 0; //variable to check when back_and_forth func has returned
+
+//for testing
+int input = 1;
 
 void setup() {
   //creating Serial here to accept input
@@ -97,9 +134,9 @@ void setup() {
   Wire.onRequest(requestEvent);
 
   //defining the max speed and acceleration for each motor here
-  stepper1.setMaxSpeed(100.0);
+  stepper1.setMaxSpeed(200.0);
   stepper1.setAcceleration(100.0);
-  stepper2.setMaxSpeed(100.0);
+  stepper2.setMaxSpeed(200.0);
   stepper2.setAcceleration(100.0);
 }
 
@@ -136,16 +173,16 @@ void getValues() {
 
   
 int back_and_forth_motion() {
-  Serial.println("The number of slices is ");
-  Serial.println(num_of_slices);
   int current_pos = stepper1.currentPosition();
+  Serial.println(current_pos);
   
   stepper1.runToNewPosition(current_pos + simulation_distance);
-  stepper1.runToNewPosition(current_pos - simulation_distance);
+  stepper1.runToNewPosition(current_pos);
   if(num_of_slices > 0) {
     num_of_slices = num_of_slices - 1;
     back_and_forth_motion();
   }
+  stepper2.moveTo(0);
   return 1;
 }
 
@@ -157,15 +194,15 @@ void loop() {
   //switch case statements with 1,2,3 representing each meat slot 
   //Placing the switch statement here because currentPosition can only be queried from within 
   //the loop function
-  if(start_signal == 'S'){
     
-  switch(meat) {
+  switch(input) {
       
     case 1:
       stepper1.moveTo(first_slot_rev);
       //this if statement gets executed when first slot gets hit
       //Serial.println("case 1");
-      if(stepper1.currentPosition() == first_slot_rev){
+      stepper2.moveTo(Y_distance_rev);
+      if(stepper1.currentPosition() == first_slot_rev && stepper2.currentPosition() == Y_distance_rev){
        return_value = back_and_forth_motion();
       }
       break;
@@ -173,7 +210,7 @@ void loop() {
       stepper1.moveTo(second_slot_rev);
       //Serial.println("case 2");
       //if statement gets executed when second slot gets hit
-      if(stepper1.currentPosition() == second_slot_rev){
+      if(stepper1.currentPosition() == second_slot_rev && stepper2.currentPosition() == Y_distance_rev){
         return_value = back_and_forth_motion();
       }
     break;
@@ -181,17 +218,18 @@ void loop() {
       stepper1.moveTo(third_slot_rev);
       //Serial.println("case 3");
       //if statement gets executed when third slot gets hit
-      if(stepper1.currentPosition() == third_slot_rev){
+      if(stepper1.currentPosition() == third_slot_rev && stepper2.currentPosition() == Y_distance_rev){
         return_value = back_and_forth_motion();
       }
     }
-  }
 
   if(return_value == 1) {
     stepper1.runToNewPosition(0);
-    stepper2.runToNewPosition(0);
+    myStepper1->release();
+    myStepper2->release();
     meat = 0; //changing the input here to prevent loop function from running indef
     //Serial.println("Returned Value");
+    input = 10;
   }
 }
 
@@ -202,4 +240,3 @@ void requestEvent(){
     return_value = 0;
   }
 }
- 
