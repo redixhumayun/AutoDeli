@@ -92,7 +92,7 @@ void loop() {
     }
     myStepper4->release();
     break;
-  case 4:
+  case 3:
     while(fsrReading < 100) {
       myStepper5->step(5, FORWARD, SINGLE);
       fsrReading = analogRead(fsrPin);
