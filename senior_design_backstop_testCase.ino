@@ -47,16 +47,10 @@ AccelStepper stepper3(forwardstep3, backwardstep3);
 AccelStepper stepper4(forwardstep4, backwardstep4);
 AccelStepper stepper5(forwardstep5, backwardstep5);
 
-//defining variables for motion of backstop
-double distance_per_step = 0.001574803; //the distance moved per step of the motor in inches. MASSIVE ASSUMPTION!
-double slot_length = 9; //the maximum distance the backstop can move in inches (still need to measure for exact value)
-int lead_screw_steps = 200; //initial no. of steps for backstops
-int max_steps = slot_length/distance_per_step; //no. of steps for backstop to travel full length of lead screw
-int total_steps = 0; //total no. of steps the backstop has traveled 
-
 //defining variables for force sensitive resistor
 int fsrPin = 0; //the FSR is connected to a0 on the Mega
 int fsrReading = 0; //the analog reading for the FSR resistor divider
+
 int input = 0; //checking test cases with this input
 
 void setup() {
