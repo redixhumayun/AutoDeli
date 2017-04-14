@@ -74,15 +74,7 @@ AccelStepper stepper5(forwardstep5, backwardstep5);
 int fsrPin = 0; //the FSR is connected to a0 on the Mega
 int fsrReading; //the analog reading for the FSR resistor divider
 
-//defining variables for motion of backstop
-double distance_per_step = 0.001574803; //the distance moved per step of the motor in inches. MASSIVE ASSUMPTION!
-double slot_length = 9; //the maximum distance the backstop can move in inches (still need to measure for exact value)
-int lead_screw_steps = 200; //initial no. of steps for backstops
-int max_steps = slot_length/distance_per_step; //no. of steps for backstop to travel full length of lead screw
-int total_steps = 0; //total no. of steps the backstop has traveled 
-
 //defining variables here for motion along the X-axis.
-double distance = 36; //the distance here is the total length of the X-slot. Distance in in
 double distance_per_revolution = 0.008; //the distance moved per revolution of the motor. MASSIVE ASSUMPTION!
 double first_slot =  0; //the distance between axle of left motor and center of first slot
 double second_slot = 7; //the distance between axle of left motor and center of second slot
@@ -110,13 +102,13 @@ int simulation_distance = simulation_width/distance_per_revolution;
 char c = '0';
 int meat = 0;
 char slices[2] = {};
-int num_of_slices = 0; //will contain integer value of slices char array
+int num_of_slices = 1; //will contain integer value of slices char array
 char start_signal = "";
 
 int return_value = 0; //variable to check when back_and_forth func has returned
 
 //for testing
-int input = 1;
+int input = 2;
 
 void setup() {
   //creating Serial here to accept input
@@ -138,6 +130,9 @@ void setup() {
   stepper1.setAcceleration(100.0);
   stepper2.setMaxSpeed(200.0);
   stepper2.setAcceleration(100.0);
+  myStepper3->setSpeed(300);
+  myStepper4->setSpeed(300);
+  myStepper5->setSpeed(300);
 }
 
 void getValues() {
@@ -145,7 +140,7 @@ void getValues() {
     c = Wire.read();
     Serial.println(c);
     switch(c) {
-      case 'm': 
+      case 'm': //case to get the meat
         Serial.println("case 1 got executed");
         meat = Wire.read() - 48; //subtracting 48 to get the actual value
         Serial.println(meat);
@@ -153,7 +148,7 @@ void getValues() {
         Serial.println("------");
         break;
 
-      case 'n':
+      case 'n': //case to get the number of slices
         Serial.println("case 2 got executed");
         //Serial.println(Wire.available());
         slices[0] = Wire.read();
@@ -163,7 +158,7 @@ void getValues() {
         Serial.println("------");
         break;
 
-      case 'S':
+      case 'S': //case to start the actual slicing
         Serial.println("case 3 got executed");
         start_signal = c;
         break;
@@ -172,18 +167,27 @@ void getValues() {
 }
 
   
-int back_and_forth_motion() {
-  int current_pos = stepper1.currentPosition();
-  Serial.println(current_pos);
-  
-  stepper1.runToNewPosition(current_pos + simulation_distance);
-  stepper1.runToNewPosition(current_pos);
-  if(num_of_slices > 0) {
+int back_and_forth_motion() { //function that will simulate slicing
+  if(num_of_slices > 0) { //checks if it needs to slice
+    int current_pos = stepper1.currentPosition();
+    stepper1.runToNewPosition(current_pos + simulation_distance);
+    stepper1.runToNewPosition(current_pos);
     num_of_slices = num_of_slices - 1;
     back_and_forth_motion();
+  }else { //if done slicing return from function and move Y back to 0
+    stepper2.moveTo(0);
+    return 1;
   }
-  stepper2.moveTo(0);
-  return 1;
+//  int current_pos = stepper1.currentPosition();
+//  
+//  stepper1.runToNewPosition(current_pos + simulation_distance);
+//  stepper1.runToNewPosition(current_pos);
+//  if(num_of_slices > 0) {
+//    num_of_slices = num_of_slices - 1;
+//    back_and_forth_motion();
+//  }
+//  stepper2.moveTo(0);
+//  return 1;
 }
 
 void loop() {
@@ -195,41 +199,55 @@ void loop() {
   //Placing the switch statement here because currentPosition can only be queried from within 
   //the loop function
     
-  switch(input) {
+  switch(input) { //need to move repetitive code within another function
       
     case 1:
+    //first two lines move the X and Y steppers
       stepper1.moveTo(first_slot_rev);
-      //this if statement gets executed when first slot gets hit
-      //Serial.println("case 1");
       stepper2.moveTo(Y_distance_rev);
       if(stepper1.currentPosition() == first_slot_rev && stepper2.currentPosition() == Y_distance_rev){
-       return_value = back_and_forth_motion();
+       while(fsrReading < 100) { //while loop to move backstops until fsr hit
+        myStepper3->step(5, FORWARD, SINGLE); //moves using MotorShield V2 lib
+        fsrReading = analogRead(fsrPin); //takes FSR reading
+       }
+       myStepper3->release();
+       return_value = back_and_forth_motion(); //calls slicing simulation function
       }
       break;
     case 2:
       stepper1.moveTo(second_slot_rev);
-      //Serial.println("case 2");
-      //if statement gets executed when second slot gets hit
+      stepper2.moveTo(Y_distance_rev);
       if(stepper1.currentPosition() == second_slot_rev && stepper2.currentPosition() == Y_distance_rev){
+        while(fsrReading < 100) {
+          myStepper4->step(5, FORWARD, SINGLE);
+          fsrReading = analogRead(fsrPin);
+        }
+        myStepper4->release();
         return_value = back_and_forth_motion();
       }
-    break;
-  case 3:
+      break;
+    case 3:
       stepper1.moveTo(third_slot_rev);
-      //Serial.println("case 3");
-      //if statement gets executed when third slot gets hit
+      stepper2.moveTo(Y_distance_rev);
       if(stepper1.currentPosition() == third_slot_rev && stepper2.currentPosition() == Y_distance_rev){
+        while(fsrReading < 100) {
+          myStepper5->step(5, FORWARD, SINGLE);
+          fsrReading = analogRead(fsrPin);
+        }
+        myStepper5->release();
         return_value = back_and_forth_motion();
       }
+      break;
     }
 
-  if(return_value == 1) {
+  if(return_value == 1) { //checks to see if slicing is done or not
     stepper1.runToNewPosition(0);
     myStepper1->release();
     myStepper2->release();
     meat = 0; //changing the input here to prevent loop function from running indef
-    //Serial.println("Returned Value");
-    input = 10;
+    
+    input = 10; //changing this to 10 to change the test case value
+    //to prevent code from iterating again
   }
 }
 
