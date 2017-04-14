@@ -81,7 +81,8 @@ double second_slot = 7; //the distance between axle of left motor and center of 
 double third_slot = 13.75; //the distance between axle of left motor and center of third slot
 
 //variables for motion along the Y-axis
-double Y_distance = 1.5; //distance the slicer will have to move forward to be flush with meat
+double Y_distance = 1.5; //distance the slicer will have to move forward to cut meat 
+double Y_distance_push_back = 0.75; //distance to push meat back into the meat slot
 
 //no of revolutions to reach 1st slot
 int first_slot_rev = first_slot/distance_per_revolution; 
@@ -91,6 +92,8 @@ int second_slot_rev = second_slot/distance_per_revolution;
 int third_slot_rev = third_slot/distance_per_revolution; 
 //no of revolutions to be flush with meat
 int Y_distance_rev = Y_distance/distance_per_revolution; 
+//no of revolutions to push meat back into meat slot
+int Y_distance_push_back_rev = Y_distance_push_back/distance_per_revolution;
 
 
 //variables for simulating back and forth motion go here
@@ -107,8 +110,11 @@ char start_signal = "";
 
 int return_value = 0; //variable to check when back_and_forth func has returned
 
+//variable to keep track of backstop movement
+int total_steps = 0;
+
 //for testing
-int input = 2;
+int input = 3;
 
 void setup() {
   //creating Serial here to accept input
@@ -126,8 +132,8 @@ void setup() {
   Wire.onRequest(requestEvent);
 
   //defining the max speed and acceleration for each motor here
-  stepper1.setMaxSpeed(200.0);
-  stepper1.setAcceleration(100.0);
+  stepper1.setMaxSpeed(400.0);
+  stepper1.setAcceleration(300.0);
   stepper2.setMaxSpeed(200.0);
   stepper2.setAcceleration(100.0);
   myStepper3->setSpeed(300);
@@ -167,7 +173,7 @@ void getValues() {
 }
 
   
-int back_and_forth_motion() { //function that will simulate slicing
+int back_and_forth_motion() { //function that will simulation slicing
   if(num_of_slices > 0) { //checks if it needs to slice
     int current_pos = stepper1.currentPosition();
     stepper1.runToNewPosition(current_pos + simulation_distance);
@@ -175,19 +181,8 @@ int back_and_forth_motion() { //function that will simulate slicing
     num_of_slices = num_of_slices - 1;
     back_and_forth_motion();
   }else { //if done slicing return from function and move Y back to 0
-    stepper2.moveTo(0);
     return 1;
   }
-//  int current_pos = stepper1.currentPosition();
-//  
-//  stepper1.runToNewPosition(current_pos + simulation_distance);
-//  stepper1.runToNewPosition(current_pos);
-//  if(num_of_slices > 0) {
-//    num_of_slices = num_of_slices - 1;
-//    back_and_forth_motion();
-//  }
-//  stepper2.moveTo(0);
-//  return 1;
 }
 
 void loop() {
@@ -208,10 +203,12 @@ void loop() {
       if(stepper1.currentPosition() == first_slot_rev && stepper2.currentPosition() == Y_distance_rev){
        while(fsrReading < 100) { //while loop to move backstops until fsr hit
         myStepper3->step(5, FORWARD, SINGLE); //moves using MotorShield V2 lib
+        total_steps = total_steps + 5;
         fsrReading = analogRead(fsrPin); //takes FSR reading
        }
-       myStepper3->release();
+       stepper2.runToNewPosition(stepper2.currentPosition() - 20);
        return_value = back_and_forth_motion(); //calls slicing simulation function
+       myStepper3->step(total_steps, BACKWARD, SINGLE);
       }
       break;
     case 2:
@@ -220,10 +217,12 @@ void loop() {
       if(stepper1.currentPosition() == second_slot_rev && stepper2.currentPosition() == Y_distance_rev){
         while(fsrReading < 100) {
           myStepper4->step(5, FORWARD, SINGLE);
+          total_steps = total_steps + 5;
           fsrReading = analogRead(fsrPin);
         }
-        myStepper4->release();
+        stepper2.runToNewPosition(stepper2.currentPosition() - 20);
         return_value = back_and_forth_motion();
+        myStepper4->step(total_steps, BACKWARD, SINGLE);
       }
       break;
     case 3:
@@ -232,23 +231,36 @@ void loop() {
       if(stepper1.currentPosition() == third_slot_rev && stepper2.currentPosition() == Y_distance_rev){
         while(fsrReading < 100) {
           myStepper5->step(5, FORWARD, SINGLE);
+          total_steps = total_steps + 5;
           fsrReading = analogRead(fsrPin);
         }
-        myStepper5->release();
+        stepper2.runToNewPosition(stepper2.currentPosition() - 20);
         return_value = back_and_forth_motion();
+        myStepper5->step(total_steps, BACKWARD, SINGLE);
       }
       break;
     }
 
   if(return_value == 1) { //checks to see if slicing is done or not
-    stepper1.runToNewPosition(0);
-    myStepper1->release();
-    myStepper2->release();
-    meat = 0; //changing the input here to prevent loop function from running indef
-    
-    input = 10; //changing this to 10 to change the test case value
+    input = 0; //changing this to 0 to change the test case value
+
+    stepper2.runToNewPosition(stepper2.currentPosition() + Y_distance_push_back_rev + 20); //pushes meat back into slot
+    stepper1.runToNewPosition(0); //moves X back to 0
+    stepper2.runToNewPosition(0); //moves Y back to 0
+    releaseAllMotors();
+
+    meat = 0; //changing the input here to prevent loop function from running indef 
+    return_value = 0; //changing return_value to 0 to prevent loop iterating indefinitely
     //to prevent code from iterating again
   }
+}
+
+void releaseAllMotors() {
+  myStepper1->release();
+  myStepper2->release();
+  myStepper3->release();
+  myStepper4->release();
+  myStepper5->release();
 }
 
 void requestEvent(){
