@@ -140,10 +140,9 @@ slices_input:
     lcd.setCursor(10, 1);
     lcd.print(slices[2]); // Print the second digit entered.
     delay(500); // Pause and wait 500 ms.
-    
   }
   else if(slices[2] == '#') {
-    slices[2] = "";
+    //slices[2] = "";
   } 
   else if(slices[2] == '*') {
     goto slices_input;
@@ -177,8 +176,10 @@ slices_input:
   lcd.print("# Slices: ");
   lcd.setCursor(11,1);
   lcd.print(slices[1]);
-  lcd.setCursor(12,1);
-  lcd.print(slices[2]);
+  if (slices[2] != '#'){
+    lcd.setCursor(12,1);
+    lcd.print(slices[2]); 
+  }
 
   //Wait for the user to approve or deny the order
   cancel =  keypad.waitForKey();
@@ -198,7 +199,7 @@ slices_input:
   //The accept option
   else if(cancel == '#') {
     Wire.beginTransmission(8);
-    Wire.write("S");
+    Wire.write('S');
     Wire.endTransmission();
   }
 
@@ -209,6 +210,7 @@ slices_input:
   lcd.print("Slicing...");
   while(Wire.read() != 'K') {
     Wire.requestFrom(8, 1);
+    delay(1000);
   }
  
   /// When slicing is complete:
@@ -233,6 +235,6 @@ slices_input:
                                  // specify where.
   lcd.setCursor(0, 1); // Set cursor all the way to left on the 2nd line of LCD.
   lcd.print("Press any key");
-
 }
+
 
